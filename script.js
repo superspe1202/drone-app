@@ -9,42 +9,32 @@ var googleSat = L.tileLayer('http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
     attribution: '© Google'
 });
 
-// 2. Image Tile Layers (Visual Reference)
-var cadastral591 = L.tileLayer('tiles/{z}/{x}/{y}.png', {
-    opacity: 1.0,
-    maxZoom: 20,       
-    minZoom: 15,
-    zIndex: 100,
-    attribution: '591地籍圖(離線)'
-});
-
-// 3. Vector Layer (Interactive Lots)
+// 2. Vector Layer (The Interactive Magic)
 var vectorLayer = L.geoJSON(null, {
     style: {
-        color: "transparent", // Invisible but clickable
-        weight: 1,
-        fillColor: "#3498db",
-        fillOpacity: 0
+        color: "#f1c40f", // Highlight color
+        weight: 2,
+        opacity: 0.8,
+        fillOpacity: 0.1
     },
     onEachFeature: function (feature, layer) {
         layer.on('click', function (e) {
             L.DomEvent.stopPropagation(e);
-            // Highlight
-            vectorLayer.eachLayer(l => vectorLayer.resetStyle(l));
-            layer.setStyle({ color: "#f1c40f", weight: 3, fillOpacity: 0.4 });
             
-            // Calculate Area
+            // Selection effect
+            vectorLayer.eachLayer(l => vectorLayer.resetStyle(l));
+            layer.setStyle({ color: "#e74c3c", weight: 4, fillOpacity: 0.4 });
+            
+            // Area Calculation
             var areaSqm = L.GeometryUtil.geodesicArea(layer.getLatLngs()[0]);
             updateDisplay(areaSqm);
             
-            // Popup info
-            var props = feature.properties || {};
             layer.bindPopup(`<b>土地資訊</b><br>面積: ${Math.round(areaSqm)} m²`).openPopup();
         });
     }
 }).addTo(map);
 
-// 4. Dynamic Loader Logic
+// 3. Dynamic Tile Loader (The Pro Way)
 var loadedTiles = new Set();
 
 function lng2tile(lon,zoom) { return (Math.floor((lon+180)/360*Math.pow(2,zoom))); }
@@ -52,48 +42,52 @@ function lat2tile(lat,zoom)  { return (Math.floor((1-Math.log(Math.tan(lat*Math.
 
 function loadVisibleVectors() {
     var zoom = map.getZoom();
-    if (zoom < 17) return; // Only load at high zoom for performance
+    // We only have vector data at Zoom 15-20
+    if (zoom < 15 || zoom > 20) return; 
     
     var bounds = map.getBounds();
+    // Get visible tile range
     var minX = lng2tile(bounds.getWest(), zoom);
     var maxX = lng2tile(bounds.getEast(), zoom);
     var minY = lat2tile(bounds.getNorth(), zoom);
     var maxY = lat2tile(bounds.getSouth(), zoom);
 
+    // Limit radius to prevent massive requests
     for (var x = minX; x <= maxX; x++) {
         for (var y = minY; y <= maxY; y++) {
-            var tileKey = `${zoom}/${x}/${y}`;
-            if (!loadedTiles.has(tileKey)) {
-                loadedTiles.add(tileKey);
-                fetch(`vector_tiles/${tileKey}.json`)
-                    .then(res => res.json())
+            var tilePath = `${zoom}/${x}/${y}.json`;
+            if (!loadedTiles.has(tilePath)) {
+                loadedTiles.add(tilePath);
+                fetch(`vector_tiles/${tilePath}`)
+                    .then(res => {
+                        if (res.ok) return res.json();
+                        throw new Error('No tile');
+                    })
                     .then(data => {
                         vectorLayer.addData(data);
                     })
-                    .catch(err => {
-                        // Tile might not exist yet
-                    });
+                    .catch(err => { /* Ignore missing tiles */ });
             }
         }
     }
 }
 
+// Trigger on move
 map.on('moveend', loadVisibleVectors);
-loadVisibleVectors();
+loadVisibleVectors(); // Initial load
 
-// UI Elements
+// UI Controls
 googleSat.addTo(map);
-cadastral591.addTo(map);
 
-var baseMaps = { "衛星地圖": googleSat, "白底地圖": osm };
-var overlayMaps = { "591 紅線 (離線)": cadastral591, "互動選取層": vectorLayer };
+var baseMaps = { "衛星地圖": googleSat, "一般地圖": osm };
+var overlayMaps = { "地籍互動層": vectorLayer };
 L.control.layers(baseMaps, overlayMaps).addTo(map);
 L.control.locate({position: 'topleft'}).addTo(map);
 
-// Existing Draw Tools (Manual Override)
+// Manual Draw Tool (Backup)
 var drawnItems = new L.FeatureGroup().addTo(map);
 new L.Control.Draw({
-    draw: { polygon: { showArea: true }, polyline: false, circle: false, rectangle: true, marker: false, circlemarker: false },
+    draw: { polygon: true, polyline: false, circle: false, rectangle: true, marker: false, circlemarker: false },
     edit: { featureGroup: drawnItems }
 }).addTo(map);
 
@@ -104,7 +98,7 @@ map.on(L.Draw.Event.CREATED, function (e) {
     updateDisplay(L.GeometryUtil.geodesicArea(layer.getLatLngs()[0]));
 });
 
-// Price Calculation
+// Price UI Sync
 var pricePerFenInput = document.getElementById('pricePerFen');
 var areaDisplay = document.getElementById('areaDisplay');
 var areaSubDisplay = document.getElementById('areaSubDisplay');

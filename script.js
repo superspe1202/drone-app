@@ -29,10 +29,44 @@ var vectorLayer = L.geoJSON(null, {
             var areaSqm = L.GeometryUtil.geodesicArea(layer.getLatLngs()[0]);
             updateDisplay(areaSqm);
             
+            // *** NEW: 顯示每一邊的長度 ***
+            showEdgeLengths(layer);
+            
             layer.bindPopup(`<b>土地資訊</b><br>面積: ${Math.round(areaSqm)} m²`).openPopup();
         });
     }
 }).addTo(map);
+
+// 5. 邊長顯示邏輯
+var edgeLabelGroup = L.layerGroup().addTo(map);
+
+function showEdgeLengths(layer) {
+    edgeLabelGroup.clearLayers();
+    var latlngs = layer.getLatLngs()[0];
+    
+    for (var i = 0; i < latlngs.length; i++) {
+        var p1 = latlngs[i];
+        var p2 = latlngs[(i + 1) % latlngs.length]; // 接回起點
+        
+        // 計算距離 (公尺)
+        var distance = map.distance(p1, p2);
+        
+        if (distance > 1) { // 忽略太短的碎邊
+            // 計算中點
+            var midPoint = L.latLng((p1.lat + p2.lat) / 2, (p1.lng + p2.lng) / 2);
+            
+            // 建立文字標籤
+            L.marker(midPoint, {
+                icon: L.divIcon({
+                    className: 'edge-label',
+                    html: `<span>${distance.toFixed(1)}m</span>`,
+                    iconSize: [40, 20]
+                }),
+                interactive: false
+            }).addTo(edgeLabelGroup);
+        }
+    }
+}
 
 // 3. Dynamic Tile Loader (The Pro Way)
 var loadedTiles = new Set();

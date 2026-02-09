@@ -3,7 +3,7 @@ var map = L.map('map').setView([24.6185, 121.7510], 18);
 
 // 1. Base Layers
 var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OSM' });
-var googleSat = L.tileLayer('http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+var googleSat = L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
     maxZoom: 22,
     subdomains:['mt0','mt1','mt2','mt3'],
     attribution: '© Google'

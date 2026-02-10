@@ -42,10 +42,9 @@
     <script>
         var map = L.map('map', { zoomControl: true }).setView([24.663, 121.784], 19);
         
-        L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
-            maxZoom: 22,
-            subdomains:['mt0','mt1','mt2','mt3'],
-            attribution: '© Google'
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap contributors'
         }).addTo(map);
 
         map.on('zoomend', function() {

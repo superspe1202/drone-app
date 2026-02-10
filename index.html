@@ -14,11 +14,24 @@
             z-index: 1000; box-shadow: 0 15px 40px rgba(0,0,0,0.4); border: 3px solid #2ecc71;
         }
         .result-box { background: #27ae60; padding: 20px; border-radius: 12px; margin-top: 15px; text-align: center; color: white; }
-        .zoom-display {
-            position: absolute; bottom: 20px; right: 20px; 
-            background: black; color: white; padding: 10px 20px;
-            border-radius: 20px; font-size: 20px; font-weight: bold;
-            z-index: 2000; opacity: 0.8;
+        .land-label {
+            background: none;
+            border: none;
+            box-shadow: none;
+            font-size: 10px;
+            font-weight: bold;
+            color: #2c3e50;
+            text-align: center;
+            white-space: nowrap;
+        }
+        .dim-label {
+            background: white;
+            border: 1px solid #7f8c8d;
+            border-radius: 3px;
+            padding: 1px 3px;
+            font-size: 9px;
+            color: #e67e22;
+            font-weight: bold;
         }
     </style>
 </head>
@@ -51,16 +64,49 @@
             document.getElementById('zoom-indicator').innerText = 'Zoom: ' + map.getZoom();
         });
 
+        var labelLayer = L.layerGroup().addTo(map);
+        var dimLayer = L.layerGroup().addTo(map);
+
         var vectorLayer = L.geoJSON(null, {
-            style: { color: "#f1c40f", weight: 3, fillOpacity: 0.2 },
+            style: { color: "#34495e", weight: 1, fillOpacity: 0.1 },
             onEachFeature: function(feature, layer) {
+                // Add Land Number Label
+                var center = layer.getBounds().getCenter();
+                L.marker(center, {
+                    icon: L.divIcon({
+                        className: 'land-label',
+                        html: feature.properties.land_number,
+                        iconSize: [40, 10]
+                    }),
+                    interactive: false
+                }).addTo(labelLayer);
+
                 layer.on('click', function(e) {
                     L.DomEvent.stopPropagation(e);
                     vectorLayer.eachLayer(l => vectorLayer.resetStyle(l));
-                    layer.setStyle({ color: "#e74c3c", weight: 6, fillOpacity: 0.5 });
+                    dimLayer.clearLayers();
+                    
+                    layer.setStyle({ color: "#e74c3c", weight: 3, fillOpacity: 0.3 });
                     
                     var latlngs = layer.getLatLngs()[0];
                     if (Array.isArray(latlngs[0])) latlngs = latlngs[0];
+                    
+                    // Show dimensions for each edge
+                    for (var i = 0; i < latlngs.length - 1; i++) {
+                        var p1 = latlngs[i];
+                        var p2 = latlngs[i+1];
+                        var dist = map.distance(p1, p2).toFixed(1) + 'm';
+                        var mid = L.latLng((p1.lat + p2.lat)/2, (p1.lng + p2.lng)/2);
+                        
+                        L.marker(mid, {
+                            icon: L.divIcon({
+                                className: 'dim-label',
+                                html: dist,
+                                iconSize: [35, 12]
+                            })
+                        }).addTo(dimLayer);
+                    }
+
                     var sqm = L.GeometryUtil.geodesicArea(latlngs);
                     document.getElementById('area-val').innerText = (Math.abs(sqm) * 0.00103102).toFixed(2);
                     

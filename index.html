@@ -45,7 +45,8 @@
         </div>
         <p style="margin-top:15px; font-size:14px; text-align:center;">
             ✅ 已載入全宜蘭 12 鄉鎮數據<br>
-            ✅ 包含 130 筆真實頂點資料
+            ✅ 包含 130 筆真實頂點資料<br>
+            ✅ 八仙段 975 筆交易價格
         </p>
     </div>
     <div id="map"></div>
@@ -66,6 +67,17 @@
 
         var labelLayer = L.layerGroup().addTo(map);
         var dimLayer = L.layerGroup().addTo(map);
+        
+        // Load price data for Baxian section
+        var priceData = {};
+        fetch('baxian_price_data.json')
+            .then(r => r.json())
+            .then(data => {
+                data.forEach(d => {
+                    priceData[d.landNumber] = d;
+                });
+                console.log('Loaded price data:', Object.keys(priceData).length, 'records');
+            });
 
         var vectorLayer = L.geoJSON(null, {
             style: { color: "#34495e", weight: 1, fillOpacity: 0.1 },
@@ -110,7 +122,14 @@
                     var sqm = L.GeometryUtil.geodesicArea(latlngs);
                     document.getElementById('area-val').innerText = (Math.abs(sqm) * 0.00103102).toFixed(2);
                     
-                    layer.bindPopup(`<b>地段: ${feature.properties.sect_name}</b><br>地號: ${feature.properties.land_number}<br>鄉鎮: ${feature.properties.town}`).openPopup();
+                    // Show price if available
+                    var landNum = feature.properties.land_number;
+                    var priceInfo = '';
+                    if (priceData[landNum]) {
+                        priceInfo = `<br>單價: <b>${priceData[landNum].price}</b><br>坪數: ${priceData[landNum].area} 坪`;
+                    }
+                    
+                    layer.bindPopup(`<b>地段: ${feature.properties.sect_name}</b><br>地號: ${landNum}<br>鄉鎮: ${feature.properties.town}${priceInfo}`).openPopup();
                 });
             }
         }).addTo(map);
